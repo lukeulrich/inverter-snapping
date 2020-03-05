@@ -73,6 +73,7 @@
     INVERTER_MIN_POSITION_RADIUS = 6;
     INVERTER_POSITION_RADIUS_SPREAD = 2;
 
+    SNAP_DISTANCE = .25;
 
     if (WEBGL.isWebGLAvailable() === false) {
       document.body.appendChild(WEBGL.getWebGLErrorMessage());
@@ -84,12 +85,16 @@
     var ground, house; // references to the ground and house entities
     var raycaster; // used to determine mouse-picked objects
     var dragEntity; // used to store which entity is being dragged
+    var firstInverter;
+
+    var offsetPlane = new THREE.Plane();
+    var offsetPoint = new THREE.Vector3();
+    var offsetWorldPosition = new THREE.Vector3();
+
     init();
     render();
 
-
     function init() {
-
       scene = new THREE.Scene();
       scene.background = new THREE.Color(BG_COLOR);
       scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_NEAR_DISTANCE);
@@ -145,6 +150,8 @@
       // event handlers
       window.addEventListener('resize', onWindowResize, false);
       window.addEventListener("keydown", onDocumentKeyDown, false);
+
+      createInverter();
     }
 
 
@@ -198,30 +205,55 @@
       var closestIntersectEntity = entities.get(intersects[0].object.uuid);
       if (closestIntersectEntity != null && closestIntersectEntity.draggable) {
         dragEntity = closestIntersectEntity;
-        console.log('clicked on draggable entity');
-      }
-      else if (closestIntersectEntity != null &&
-        closestIntersectEntity.constructor.name === "House") {
-        console.log(`Clicked on the house at point`);
-        console.log(`intersection is at
-        [${intersects[0].point.x},
-        ${intersects[0].point.y},
-        ${intersects[0].point.z}]`);
-        console.log(`intersection has normal of
-        [${intersects[0].face.normal.x},
-        ${intersects[0].face.normal.y},
-        ${intersects[0].face.normal.z}]`);
-        // You can get the vertices of the triangle intersected thru
-        // the intersects[0].face and intersects[0].object.geometry.vertices
+
+        // Store the offset in world space where the user clicked the mouse
+        camera.getWorldDirection(offsetPlane.normal);
+        offsetWorldPosition.setFromMatrixPosition(dragEntity.mesh.matrixWorld);
+        offsetPlane.setFromNormalAndCoplanarPoint(
+          offsetPlane.normal,
+          offsetWorldPosition,
+        );
+        raycaster.ray.intersectPlane(offsetPlane, offsetPoint);
+        offsetPoint.sub(offsetWorldPosition);
       }
     }
 
 
     function handleMouseMove(event) {
-      // Add your dragging code here
-      if (dragEntity != null) {
-        console.log('dragging a draggable entity');
+      if (dragEntity == null) {
+        return;
       }
+
+      var mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      camera.updateMatrixWorld();
+      raycaster.setFromCamera(mouse, camera);
+
+      var planeIntersection = new THREE.Vector3();
+      raycaster.ray.intersectPlane(offsetPlane, planeIntersection);
+      const { mesh } = dragEntity;
+
+      const newDest = planeIntersection.sub(offsetPoint);
+      const noChange = isEqual(newDest.x, mesh.position.x) && isEqual(newDest.y, mesh.position.y) && isEqual(newDest.z, mesh.position.z);
+      if (noChange) {
+        return;
+      }
+
+      mesh.position.copy(planeIntersection.sub(offsetPoint));
+
+      const { geometry } = mesh;
+
+      // Calculate our drag normal
+      const dragNormal = offsetWorldPosition.clone().sub(mesh.position).normalize();
+
+      let result = dragEntity.findIntersectionWith(house.mesh, dragNormal);
+      if (result) {
+        const [intersect, delta] = result;
+        mesh.position.copy(intersect.point).sub(delta);
+      }
+      render();
+
     }
 
 
@@ -237,11 +269,13 @@
       var inverter = new Inverter(
         INVERTER_WIDTH,
         INVERTER_LENGTH,
-        INVERTER_HEIGHT);
+        INVERTER_HEIGHT,
+        scene,
+      );
+      firstInverter = inverter;
       inverter.initGeometry(scene);
-      var newInverterAngle = Math.random() * Math.PI * 2;
-      var newInverterDistance = Math.random() *
-        INVERTER_POSITION_RADIUS_SPREAD;
+      var newInverterAngle = .15 * Math.PI * 2; // Math.random() * Math.PI * 2;
+      var newInverterDistance = .5; // Math.random() * INVERTER_POSITION_RADIUS_SPREAD;
       newInverterDistance += INVERTER_MIN_POSITION_RADIUS;
       var newInverterPos = new THREE.Vector3(
         newInverterDistance * Math.cos(newInverterAngle),
@@ -279,7 +313,6 @@
     function render() {
       renderer.render(scene, camera);
     }
-
   </script>
 
 </body>
