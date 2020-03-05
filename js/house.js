@@ -6,6 +6,7 @@ class House {
     this.roofSlope = roofSlope;
 
     this.mesh = null;
+    this.faceData = null;
   }
 
   updatePosition(newPosition) {
@@ -19,7 +20,7 @@ class House {
     const peakHeight = wallHeight + (Math.tan(this.roofSlope) * (this.width / 2));
     // Create walls
     this.vertices = [];
-    this.faces = []
+    this.faces = [];
     this.vertices.push(new THREE.Vector3(-this.width / 2, 0, -this.length / 2));
     this.vertices.push(new THREE.Vector3(-this.width / 2, wallHeight, this.length / 2));
     this.vertices.push(new THREE.Vector3(-this.width / 2, wallHeight, -this.length / 2));
@@ -59,5 +60,10 @@ class House {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     scene.add(this.mesh);
+
+    this.faceData = this.faces.map((face) => ({
+      face,
+      invertedNormal: face.normal.clone().multiplyScalar(-1),
+    }));
   }
 };
