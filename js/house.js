@@ -6,6 +6,7 @@ class House {
     this.roofSlope = roofSlope;
 
     this.mesh = null;
+    this.faceData = null;
   }
 
   updatePosition(newPosition) {
@@ -19,20 +20,30 @@ class House {
     const peakHeight = wallHeight + (Math.tan(this.roofSlope) * (this.width / 2));
     // Create walls
     this.vertices = [];
-    this.faces = []
+    this.faces = [];
+    // 0
     this.vertices.push(new THREE.Vector3(-this.width / 2, 0, -this.length / 2));
+    // 1
     this.vertices.push(new THREE.Vector3(-this.width / 2, wallHeight, this.length / 2));
+    // 2
     this.vertices.push(new THREE.Vector3(-this.width / 2, wallHeight, -this.length / 2));
+    // 3
     this.vertices.push(new THREE.Vector3(-this.width / 2, 0, this.length / 2));
+    // 4
     this.vertices.push(new THREE.Vector3(-this.width / 2, peakHeight, 0));
     this.faces.push(new THREE.Face3(0, 1, 2));
     this.faces.push(new THREE.Face3(0, 3, 1));
     this.faces.push(new THREE.Face3(1, 4, 2));
 
+    // 5
     this.vertices.push(new THREE.Vector3(this.width / 2, 0, -this.length / 2));
+    // 6
     this.vertices.push(new THREE.Vector3(this.width / 2, wallHeight, this.length / 2));
+    // 7
     this.vertices.push(new THREE.Vector3(this.width / 2, wallHeight, -this.length / 2));
+    // 8
     this.vertices.push(new THREE.Vector3(this.width / 2, 0, this.length / 2));
+    // 9
     this.vertices.push(new THREE.Vector3(this.width / 2, peakHeight, 0));
     this.faces.push(new THREE.Face3(5, 7, 6));
     this.faces.push(new THREE.Face3(5, 6, 8));
@@ -42,6 +53,10 @@ class House {
     this.faces.push(new THREE.Face3(3, 8, 6));
     this.faces.push(new THREE.Face3(5, 2, 7));
     this.faces.push(new THREE.Face3(5, 0, 2));
+
+    // Create floor
+    this.faces.push(new THREE.Face3(0, 3, 5));
+    this.faces.push(new THREE.Face3(3, 5, 8));
 
     // Create roof
     this.faces.push(new THREE.Face3(1, 9, 4));
@@ -59,5 +74,15 @@ class House {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     scene.add(this.mesh);
+
+    this.faceData = this.faces.map((face) => ({
+      face,
+      invertedNormal: face.normal.clone().multiplyScalar(-1),
+    }));
+
+    const axes = new THREE.AxesHelper();
+    axes.material.depthTest = false;
+    axes.renderOrder = 1;
+    this.mesh.add(axes);
   }
 };
